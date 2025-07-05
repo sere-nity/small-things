@@ -62,6 +62,10 @@ export default function HomePage() {
         return entries.some(entry => entry.date === todayDateString);
     };
 
+    const isCurrentMonth = () => {
+        return selectedMonth === getCurrentMonthYear();
+    };
+
     const handleAddEntry = () => {
         if (input.trim() === '') {
             // if input is empty, do not add entry
@@ -159,14 +163,14 @@ export default function HomePage() {
                     )}
                 />
             </View>
-            {/* add entry button should only appear when we are not adding an entry and there's no entry for today and not editing */}
-            {!adding && !hasEntryForToday() && editingIndex === null && (
+            {/* add entry button should only appear when we are not adding an entry and there's no entry for today and not editing and it's the current month */}
+            {!adding && !hasEntryForToday() && editingIndex === null && isCurrentMonth() && (
                 <TouchableOpacity style={styles.addButton} onPress={() => setAdding(true)}>
                     <Text style={styles.addButtonText}>Add Entry</Text>
                 </TouchableOpacity>
             )}
-            {/* Show message when entry already exists for today */}
-            {!adding && hasEntryForToday() && editingIndex === null && (
+            {/* Show message when entry already exists for today in current month */}
+            {!adding && hasEntryForToday() && editingIndex === null && isCurrentMonth() && (
                 <View style={styles.todayCompleteContainer}>
                     <Text style={styles.todayCompleteText}>You've already added an entry for today!</Text>
                 </View>
