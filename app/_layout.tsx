@@ -20,11 +20,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <StatusBar 
-        style="dark"           // Force light text (visible on dark backgrounds)
-        // backgroundColor="purple" // Android only - try bright color
-        // hidden={false}           // This should definitely be visible - hides entire status bar
-        // animated={true}         
-        // translucent={false}     // Android - make status bar opaque
+        style="auto"           
       />
       <HomeScreen />
     </ThemeProvider>

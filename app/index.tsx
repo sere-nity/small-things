@@ -1,81 +1,114 @@
-import React, { useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useState } from "react";
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
-const CHARACTER_LIMIT = 50;
-
-const initialEntries = [
-  { date: 'Monday 30th', description: 'went for a walk' },
-  { date: 'Tuesday 1st', description: 'played Minecraft with a friend' },
-  { date: 'Wednesday 2nd', description: 'made tea' },
-];
-
-export default function HomeScreen() {
-  const [entries, setEntries] = useState(initialEntries);
-  const [adding, setAdding] = useState(false);
-  const [input, setInput] = useState('');
-
-  const handleAddEntry = () => {
-    if (input.trim().length > 0) {
-      const today = new Date();
-      const dateStr = today.toLocaleDateString('en-GB', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-      });
-      setEntries([...entries, { date: dateStr, description: input.trim() }]);
-      setInput('');
-      setAdding(false);
-    }
-  };
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Text style={styles.header}>July 2025</Text>
-      <View style={styles.entriesRow}>
-        <View style={styles.verticalLine} />
-        <FlatList
-          data={entries}
-          keyExtractor={(_, idx) => idx.toString()}
-          style={styles.entriesList}
-          contentContainerStyle={styles.entriesContent}
-          renderItem={({ item }) => (
-            <View style={styles.entryItem}>
-              <Text style={styles.entryDate}>{item.date}</Text>
-              <Text style={styles.entryDesc}>{item.description}</Text>
-            </View>
-          )}
-        />
-      </View>
-      {!adding && (
-        <TouchableOpacity style={styles.addButton} onPress={() => setAdding(true)}>
-          <Text style={styles.addButtonText}>add entry today</Text>
-        </TouchableOpacity>
-      )}
-      {adding && (
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Today's entry</Text>
-          <Text style={styles.charCount}>{input.length}/{CHARACTER_LIMIT}</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="start typing here"
-            value={input}
-            onChangeText={text => text.length <= CHARACTER_LIMIT && setInput(text)}
-            multiline
-            maxLength={CHARACTER_LIMIT}
-            autoFocus
-          />
-          <TouchableOpacity style={styles.submitButton} onPress={handleAddEntry}>
-            <Text style={styles.submitButtonText}>Submit</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </KeyboardAvoidingView>
-  );
+function getOrdinal(n: number) {
+  const s = ["th", "st", "nd", "rd"],
+    v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+export default function HomePage() {
+    const initialEntries = [
+        { date: 'Monday 1st', description: 'Made tea' },
+        { date: 'Tuesday 2nd', description: 'Went for a walk' },
+        { date: 'Wednesday 3rd', description: 'Read a book' },
+    ];
+
+    const CHARACTER_LIMIT = 50;
+
+    const [entries, setEntries] = useState(initialEntries);
+    const [adding, setAdding]  = useState(false);
+    const [input, setInput] = useState('');
+    
+
+    const getTodayDateString = () => {
+        const today = new Date();
+        const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
+        const day = today.getDate();
+        return `${weekday} ${getOrdinal(day)}`;
+    };
+
+    const hasEntryForToday = () => {
+        const todayDateString = getTodayDateString();
+        return entries.some(entry => entry.date === todayDateString);
+    };
+
+    const handleAddEntry = () => {
+        if (input.trim() === '') {
+            // if input is empty, do not add entry
+            return;
+        }
+
+        // add entry to list 
+        const newEntry = {
+            date: getTodayDateString(),
+            description: input,
+        };
+
+        setEntries(prevEntries => [...prevEntries, newEntry]);
+
+        setAdding(false);
+        setInput('');
+    }
+
+    return (
+        <KeyboardAvoidingView 
+          style={styles.container}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+            <Text style={styles.header}>July 2025</Text>
+            <View style={styles.entriesRow}>
+                <View style={styles.verticalLine} />
+                <FlatList
+                    data={entries}
+                    style={styles.entriesList}
+                    renderItem={({ item }) => (
+                        <View style={styles.entryItem}>
+                            <Text style={styles.entryDate}>{item.date}</Text>
+                            <Text style={styles.entryDesc}>{item.description}</Text>
+                        </View>
+                    )}
+                />
+            </View>
+            {/* add entry button should only appear when we are not adding an entry and there's no entry for today */}
+            {!adding && !hasEntryForToday() && (
+                <TouchableOpacity style={styles.addButton} onPress={() => setAdding(true)}>
+                    <Text style={styles.addButtonText}>Add Entry</Text>
+                </TouchableOpacity>
+            )}
+            {/* Show message when entry already exists for today - FOR DEBUGGING
+            {!adding && hasEntryForToday() && (
+                <View style={styles.todayCompleteContainer}>
+                    <Text style={styles.todayCompleteText}>You've already added an entry for today!</Text>
+                </View>
+            )} */}
+            {/* if we are adding an entry, show the input fields */}
+            {adding && (
+                <View style={styles.inputContainer}>
+                    <View style={styles.labelRow}>
+                        <Text style={styles.inputLabel}>Today's Entry</Text>
+                        <Text style={styles.charCount}>{input.length}/{CHARACTER_LIMIT}</Text>
+                    </View>
+                    <TextInput
+                        style={styles.textInput}
+                        placeholder="Write your entry here..."
+                        maxLength={CHARACTER_LIMIT}
+                        value={input}
+                        multiline
+                        onChangeText={text => setInput(text)}
+                        autoFocus
+                    />
+                    <TouchableOpacity style={styles.submitButton} onPress={handleAddEntry}>
+                        <Text style={styles.submitButtonText}>Submit</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+        </KeyboardAvoidingView>
+    );
+}
+
+
+// styles 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -121,7 +154,6 @@ const styles = StyleSheet.create({
   entryDesc: {
     fontSize: 16,
     color: '#444',
-    marginLeft: 2,
     minHeight: 40,
   },
   addButton: {
@@ -142,6 +174,12 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 12,
     marginBottom: 24,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   inputLabel: {
     fontSize: 16,
@@ -174,5 +212,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
   },
+  todayCompleteContainer: {
+    backgroundColor: '#e8f5e8',
+    padding: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 24,
+  },
+  todayCompleteText: {
+    color: '#4a7c59',
+    fontSize: 16,
+    textAlign: 'center',
+  },
 });
-
