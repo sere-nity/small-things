@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 function getOrdinal(n: number) {
   const s = ["th", "st", "nd", "rd"],
@@ -8,18 +8,46 @@ function getOrdinal(n: number) {
 }
 
 export default function HomePage() {
-    const initialEntries = [
-        { date: 'Monday 1st', description: 'Made tea' },
-        { date: 'Tuesday 2nd', description: 'Went for a walk' },
-        { date: 'Wednesday 3rd', description: 'Read a book' },
+    // Sample data organized by month
+    const entriesByMonth: { [key: string]: { date: string; description: string }[] } = {
+        'July 2025': [
+            { date: 'Monday 1st', description: 'Made tea' },
+            { date: 'Tuesday 2nd', description: 'Went for a walk' },
+            { date: 'Wednesday 3rd', description: 'Read a book' },
+        ],
+        'June 2025': [
+            { date: 'Saturday 28th', description: 'Went to the beach' },
+            { date: 'Sunday 29th', description: 'Had a picnic' },
+        ],
+        'May 2025': [
+            { date: 'Thursday 15th', description: 'Started a new project' },
+            { date: 'Friday 16th', description: 'Finished reading a novel' },
+        ]
+    };
+
+    const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
     ];
+
+    const getCurrentMonthYear = () => {
+        const today = new Date();
+        const month = months[today.getMonth()];
+        const year = today.getFullYear();
+        return `${month} ${year}`;
+    };
 
     const CHARACTER_LIMIT = 50;
 
-    const [entries, setEntries] = useState(initialEntries);
-    const [adding, setAdding]  = useState(false);
+    const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthYear());
+    const [allEntriesByMonth, setAllEntriesByMonth] = useState(entriesByMonth);
+    const [adding, setAdding] = useState(false);
     const [input, setInput] = useState('');
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+    
+    // Get current month's entries
+    const entries = allEntriesByMonth[selectedMonth] || [];
     
 
     const getTodayDateString = () => {
@@ -46,7 +74,10 @@ export default function HomePage() {
             description: input,
         };
 
-        setEntries(prevEntries => [...prevEntries, newEntry]);
+        setAllEntriesByMonth(prev => ({
+            ...prev,
+            [selectedMonth]: [...(prev[selectedMonth] || []), newEntry]
+        }));
 
         setAdding(false);
         setInput('');
@@ -62,13 +93,14 @@ export default function HomePage() {
             return;
         }
 
-        setEntries(prevEntries => 
-            prevEntries.map((entry, index) => 
+        setAllEntriesByMonth(prev => ({
+            ...prev,
+            [selectedMonth]: (prev[selectedMonth] || []).map((entry, index) => 
                 index === editingIndex 
                     ? { ...entry, description: input }
                     : entry
             )
-        );
+        }));
 
         setEditingIndex(null);
         setInput('');
@@ -79,12 +111,39 @@ export default function HomePage() {
         setInput('');
     }
 
+    const handleMonthSelect = (month: string) => {
+        setSelectedMonth(month);
+        setShowMonthDropdown(false);
+        setAdding(false);
+        setEditingIndex(null);
+        setInput('');
+    }
+
+    const getAvailableMonths = () => {
+        const currentYear = new Date().getFullYear();
+        const availableMonths = [];
+        
+        // Add current year months
+        for (let i = 0; i < 12; i++) {
+            availableMonths.push(`${months[i]} ${currentYear}`);
+        }
+        
+        // Add next year months
+        for (let i = 0; i < 12; i++) {
+            availableMonths.push(`${months[i]} ${currentYear + 1}`);
+        }
+        
+        return availableMonths;
+    };
+
     return (
         <KeyboardAvoidingView 
           style={styles.container}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-            <Text style={styles.header}>July 2025</Text>
+            <TouchableOpacity onPress={() => setShowMonthDropdown(true)}>
+                <Text style={styles.header}>{selectedMonth}</Text>
+            </TouchableOpacity>
             <View style={styles.entriesRow}>
                 <View style={styles.verticalLine} />
                 <FlatList
@@ -147,6 +206,44 @@ export default function HomePage() {
                     </View>
                 </View>
             )}
+            
+            {/* Month Selection Modal */}
+            <Modal
+                visible={showMonthDropdown}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowMonthDropdown(false)}
+            >
+                <TouchableOpacity 
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowMonthDropdown(false)}
+                >
+                    <View style={styles.dropdownContainer}>
+                        <Text style={styles.dropdownTitle}>Select Month</Text>
+                        <FlatList
+                            data={getAvailableMonths()}
+                            keyExtractor={(item) => item}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.monthOption,
+                                        item === selectedMonth && styles.selectedMonthOption
+                                    ]}
+                                    onPress={() => handleMonthSelect(item)}
+                                >
+                                    <Text style={[
+                                        styles.monthOptionText,
+                                        item === selectedMonth && styles.selectedMonthOptionText
+                                    ]}>
+                                        {item}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }
@@ -286,5 +383,51 @@ const styles = StyleSheet.create({
     color: '#333',
     fontSize: 16,
     fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    maxHeight: '70%',
+    width: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  dropdownTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 16,
+    color: '#333',
+  },
+  monthOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  selectedMonthOption: {
+    backgroundColor: '#e8f5e8',
+  },
+  monthOptionText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+  },
+  selectedMonthOptionText: {
+    color: '#4a7c59',
+    fontWeight: '600',
   },
 });
