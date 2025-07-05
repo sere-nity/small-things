@@ -19,6 +19,7 @@ export default function HomePage() {
     const [entries, setEntries] = useState(initialEntries);
     const [adding, setAdding]  = useState(false);
     const [input, setInput] = useState('');
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
     
 
     const getTodayDateString = () => {
@@ -51,6 +52,33 @@ export default function HomePage() {
         setInput('');
     }
 
+    const handleEditEntry = (index: number) => {
+        setEditingIndex(index);
+        setInput(entries[index].description);
+    }
+
+    const handleSaveEdit = () => {
+        if (input.trim() === '') {
+            return;
+        }
+
+        setEntries(prevEntries => 
+            prevEntries.map((entry, index) => 
+                index === editingIndex 
+                    ? { ...entry, description: input }
+                    : entry
+            )
+        );
+
+        setEditingIndex(null);
+        setInput('');
+    }
+
+    const handleCancelEdit = () => {
+        setEditingIndex(null);
+        setInput('');
+    }
+
     return (
         <KeyboardAvoidingView 
           style={styles.container}
@@ -62,31 +90,35 @@ export default function HomePage() {
                 <FlatList
                     data={entries}
                     style={styles.entriesList}
-                    renderItem={({ item }) => (
+                    renderItem={({ item, index }) => (
                         <View style={styles.entryItem}>
                             <Text style={styles.entryDate}>{item.date}</Text>
-                            <Text style={styles.entryDesc}>{item.description}</Text>
+                            <TouchableOpacity onPress={() => handleEditEntry(index)}>
+                                <Text style={styles.entryDesc}>{item.description}</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
                 />
             </View>
-            {/* add entry button should only appear when we are not adding an entry and there's no entry for today */}
-            {!adding && !hasEntryForToday() && (
+            {/* add entry button should only appear when we are not adding an entry and there's no entry for today and not editing */}
+            {!adding && !hasEntryForToday() && editingIndex === null && (
                 <TouchableOpacity style={styles.addButton} onPress={() => setAdding(true)}>
                     <Text style={styles.addButtonText}>Add Entry</Text>
                 </TouchableOpacity>
             )}
-            {/* Show message when entry already exists for today - FOR DEBUGGING
-            {!adding && hasEntryForToday() && (
+            {/* Show message when entry already exists for today */}
+            {!adding && hasEntryForToday() && editingIndex === null && (
                 <View style={styles.todayCompleteContainer}>
                     <Text style={styles.todayCompleteText}>You've already added an entry for today!</Text>
                 </View>
-            )} */}
-            {/* if we are adding an entry, show the input fields */}
-            {adding && (
+            )}
+            {/* if we are adding an entry or editing an entry, show the input fields */}
+            {(adding || editingIndex !== null) && (
                 <View style={styles.inputContainer}>
                     <View style={styles.labelRow}>
-                        <Text style={styles.inputLabel}>Today's Entry</Text>
+                        <Text style={styles.inputLabel}>
+                            {adding ? "Today's Entry" : `Edit ${entries[editingIndex!].date}`}
+                        </Text>
                         <Text style={styles.charCount}>{input.length}/{CHARACTER_LIMIT}</Text>
                     </View>
                     <TextInput
@@ -98,9 +130,21 @@ export default function HomePage() {
                         onChangeText={text => setInput(text)}
                         autoFocus
                     />
-                    <TouchableOpacity style={styles.submitButton} onPress={handleAddEntry}>
-                        <Text style={styles.submitButtonText}>Submit</Text>
-                    </TouchableOpacity>
+                    <View style={styles.buttonRow}>
+                        <TouchableOpacity 
+                            style={styles.submitButton} 
+                            onPress={adding ? handleAddEntry : handleSaveEdit}
+                        >
+                            <Text style={styles.submitButtonText}>
+                                {adding ? "Submit" : "Save"}
+                            </Text>
+                        </TouchableOpacity>
+                        {editingIndex !== null && (
+                            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
             )}
         </KeyboardAvoidingView>
@@ -203,14 +247,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   submitButton: {
+    flex: 1,
     backgroundColor: '#bbb',
     padding: 12,
     borderRadius: 6,
     alignItems: 'center',
+    marginRight: 8,
   },
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   todayCompleteContainer: {
     backgroundColor: '#e8f5e8',
@@ -224,5 +274,17 @@ const styles = StyleSheet.create({
     color: '#4a7c59',
     fontSize: 16,
     textAlign: 'center',
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#ccc',
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
