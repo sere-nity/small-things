@@ -1,54 +1,37 @@
 import { useState } from "react";
 import { FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
-function getOrdinal(n: number) {
-  const s = ["th", "st", "nd", "rd"],
-    v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-
 export default function HomePage() {
-    // Sample data organized by month
-    const entriesByMonth: { [key: string]: { date: string; description: string }[] } = {
-        'July 2025': [
-            { date: 'Monday 1st', description: 'Made tea' },
-            { date: 'Tuesday 2nd', description: 'Went for a walk' },
-            { date: 'Wednesday 3rd', description: 'Read a book' },
-        ],
-        'June 2025': [
-            { date: 'Saturday 28th', description: 'Went to the beach' },
-            { date: 'Sunday 29th', description: 'Had a picnic' },
-        ],
-        'May 2025': [
-            { date: 'Thursday 15th', description: 'Started a new project' },
-            { date: 'Friday 16th', description: 'Finished reading a novel' },
-        ]
+
+    // Organise entries by month (nested dictionary)
+    const entriesByMonth: Record<string, { date: string, description: string }[]> = {
+       ['June 2025']: [
+        { date: 'Thursday 1st', description: 'Started a new project' },
+        { date: 'Friday 2nd', description: 'Went to the gym' },
+        { date: 'Saturday 3rd', description: 'Cooked dinner' },
+      ],
+      ['July 2025']: [
+        { date: 'Monday 1st', description: 'Made tea' },
+        { date: 'Tuesday 2nd', description: 'Went for a walk' },
+        { date: 'Wednesday 3rd', description: 'Read a book' },
+      ],
+     
     };
 
     const months = [
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-
-    const getCurrentMonthYear = () => {
-        const today = new Date();
-        const month = months[today.getMonth()];
-        const year = today.getFullYear();
-        return `${month} ${year}`;
-    };
+    ]
 
     const CHARACTER_LIMIT = 50;
 
-    const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthYear());
-    const [allEntriesByMonth, setAllEntriesByMonth] = useState(entriesByMonth);
-    const [adding, setAdding] = useState(false);
-    const [input, setInput] = useState('');
-    const [editingIndex, setEditingIndex] = useState<number | null>(null);
-    const [showMonthDropdown, setShowMonthDropdown] = useState(false);
-    
-    // Get current month's entries
-    const entries = allEntriesByMonth[selectedMonth] || [];
-    
+    // ------------ UTILITY FUNCTIONS -------------------
+
+    const getOrdinal = (n: number) => {
+      const s = ["th", "st", "nd", "rd"],
+        v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
 
     const getTodayDateString = () => {
         const today = new Date();
@@ -57,14 +40,61 @@ export default function HomePage() {
         return `${weekday} ${getOrdinal(day)}`;
     };
 
+    /// returns in the format "July 2025" (to be displayed in the header)
+    /// this is also the key for the entriesByMonth object
+    const getCurrentMonthYear = () => {
+        const today = new Date();
+        const month = months[today.getMonth()];
+        return `${month} ${today.getFullYear()}`;
+    }
+
+    const isCurrentMonth = () => {
+        return selectedMonth === getCurrentMonthYear();
+    }
+
+    const getAvailableMonths = () => {
+        const currentYear = new Date().getFullYear();
+        const availableMonths = [];
+        
+        // Add current year months
+        for (let i = 0; i < 12; i++) {
+            availableMonths.push(`${months[i]} ${currentYear}`);
+        }
+        
+        // // Add next year months
+        // for (let i = 0; i < 12; i++) {
+        //     availableMonths.push(`${months[i]} ${currentYear + 1}`);
+        // }
+        
+        return availableMonths;
+    };
+
     const hasEntryForToday = () => {
         const todayDateString = getTodayDateString();
         return entries.some(entry => entry.date === todayDateString);
     };
 
-    const isCurrentMonth = () => {
-        return selectedMonth === getCurrentMonthYear();
-    };
+
+    // ------------ STATE MANAGEMENT ------------
+    // state holding the currently selected month
+    const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthYear());
+    // state to hold all entries organised by month
+    const [allEntriesByMonth, setAllEntriesByMonth] = useState(entriesByMonth);
+    // are we showing the month dropdown?
+    const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+    // are we adding today's entry? 
+    const [adding, setAdding]  = useState(false);
+    // are we editing / inputting an entry?
+    const [input, setInput] = useState('');
+    // index of the entry being edited, or null if not editing
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+    // INITIALISE current month's entries
+    const entries = allEntriesByMonth[selectedMonth] || [];
+    
+
+    
+    // ------ HANDLERS ------------------------------------
 
     const handleAddEntry = () => {
         if (input.trim() === '') {
@@ -78,9 +108,9 @@ export default function HomePage() {
             description: input,
         };
 
-        setAllEntriesByMonth(prev => ({
-            ...prev,
-            [selectedMonth]: [...(prev[selectedMonth] || []), newEntry]
+        setAllEntriesByMonth(prevEntries => ({
+            ...prevEntries,
+            [selectedMonth]: [...(prevEntries[selectedMonth] || []), newEntry],
         }));
 
         setAdding(false);
@@ -97,14 +127,14 @@ export default function HomePage() {
             return;
         }
 
-        setAllEntriesByMonth(prev => ({
-            ...prev,
-            [selectedMonth]: (prev[selectedMonth] || []).map((entry, index) => 
-                index === editingIndex 
-                    ? { ...entry, description: input }
-                    : entry
-            )
-        }));
+        setAllEntriesByMonth(prevEntries => {
+            return {
+                ...prevEntries,
+                [selectedMonth]: prevEntries[selectedMonth].map((entry, idx) => 
+                    idx === editingIndex ? { ...entry, description: input } : entry
+                ),
+            };
+        });
 
         setEditingIndex(null);
         setInput('');
@@ -115,6 +145,7 @@ export default function HomePage() {
         setInput('');
     }
 
+    
     const handleMonthSelect = (month: string) => {
         setSelectedMonth(month);
         setShowMonthDropdown(false);
@@ -123,30 +154,15 @@ export default function HomePage() {
         setInput('');
     }
 
-    const getAvailableMonths = () => {
-        const currentYear = new Date().getFullYear();
-        const availableMonths = [];
-        
-        // Add current year months
-        for (let i = 0; i < 12; i++) {
-            availableMonths.push(`${months[i]} ${currentYear}`);
-        }
-        
-        // Add next year months
-        for (let i = 0; i < 12; i++) {
-            availableMonths.push(`${months[i]} ${currentYear + 1}`);
-        }
-        
-        return availableMonths;
-    };
 
     return (
         <KeyboardAvoidingView 
           style={styles.container}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
+            {            /* should show month dropdown when pressed */}
             <TouchableOpacity onPress={() => setShowMonthDropdown(true)}>
-                <Text style={styles.header}>{selectedMonth}</Text>
+              <Text style={styles.header}>{selectedMonth}</Text>
             </TouchableOpacity>
             <View style={styles.entriesRow}>
                 <View style={styles.verticalLine} />
@@ -163,13 +179,13 @@ export default function HomePage() {
                     )}
                 />
             </View>
-            {/* add entry button should only appear when we are not adding an entry and there's no entry for today and not editing and it's the current month */}
+            {/* add entry button should only appear when we are not adding an entry and there's no entry for today and not editing and it's the current month*/}
             {!adding && !hasEntryForToday() && editingIndex === null && isCurrentMonth() && (
                 <TouchableOpacity style={styles.addButton} onPress={() => setAdding(true)}>
                     <Text style={styles.addButtonText}>Add Entry</Text>
                 </TouchableOpacity>
             )}
-            {/* Show message when entry already exists for today in current month */}
+            {/* Show message when entry already exists for today and in current month */}
             {!adding && hasEntryForToday() && editingIndex === null && isCurrentMonth() && (
                 <View style={styles.todayCompleteContainer}>
                     <Text style={styles.todayCompleteText}>You've already added an entry for today!</Text>
@@ -193,6 +209,7 @@ export default function HomePage() {
                         onChangeText={text => setInput(text)}
                         autoFocus
                     />
+                    {/* BUTTONS at bottom of input box with conditional rendering */}
                     <View style={styles.buttonRow}>
                         <TouchableOpacity 
                             style={styles.submitButton} 
@@ -210,8 +227,7 @@ export default function HomePage() {
                     </View>
                 </View>
             )}
-            
-            {/* Month Selection Modal */}
+               {/* Month Selection Modal */}
             <Modal
                 visible={showMonthDropdown}
                 transparent={true}
@@ -388,7 +404,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  modalOverlay: {
+   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
@@ -435,3 +451,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
