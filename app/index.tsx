@@ -118,22 +118,28 @@ export default function HomePage() {
     }
 
     const handleEditEntry = (index: number) => {
-        setEditingIndex(index);
-        setInput(entries[index].description);
+        if (entries[index]) {
+            setEditingIndex(index);
+            setInput(entries[index].description);
+        }
     }
 
     const handleSaveEdit = () => {
-        if (input.trim() === '') {
+        if (input.trim() === '' || editingIndex === null) {
             return;
         }
 
         setAllEntriesByMonth(prevEntries => {
-            return {
-                ...prevEntries,
-                [selectedMonth]: prevEntries[selectedMonth].map((entry, idx) => 
-                    idx === editingIndex ? { ...entry, description: input } : entry
-                ),
-            };
+            const currentEntries = prevEntries[selectedMonth] || [];
+            if (editingIndex >= 0 && editingIndex < currentEntries.length) {
+                return {
+                    ...prevEntries,
+                    [selectedMonth]: currentEntries.map((entry, idx) => 
+                        idx === editingIndex ? { ...entry, description: input } : entry
+                    ),
+                };
+            }
+            return prevEntries;
         });
 
         setEditingIndex(null);
@@ -191,42 +197,81 @@ export default function HomePage() {
                     <Text style={styles.todayCompleteText}>You've already added an entry for today!</Text>
                 </View>
             )}
-            {/* if we are adding an entry or editing an entry, show the input fields */}
-            {(adding || editingIndex !== null) && (
-                <View style={styles.inputContainer}>
-                    <View style={styles.labelRow}>
-                        <Text style={styles.inputLabel}>
-                            {adding ? "Today's Entry" : `Edit ${entries[editingIndex!].date}`}
-                        </Text>
-                        <Text style={styles.charCount}>{input.length}/{CHARACTER_LIMIT}</Text>
-                    </View>
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder="Write your entry here..."
-                        maxLength={CHARACTER_LIMIT}
-                        value={input}
-                        multiline
-                        onChangeText={text => setInput(text)}
-                        autoFocus
+            {/* if we are adding an entry or editing an entry, show the input modal */}
+            <Modal
+                visible={adding || editingIndex !== null}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => {
+                    if (adding) {
+                        setAdding(false);
+                        setInput('');
+                    } else {
+                        handleCancelEdit();
+                    }
+                }}
+            >
+                <View style={styles.inputModalOverlay}>
+                    <TouchableOpacity 
+                        style={styles.inputModalBackdrop}
+                        activeOpacity={1}
+                        onPress={() => {
+                            if (adding) {
+                                setAdding(false);
+                                setInput('');
+                            } else {
+                                handleCancelEdit();
+                            }
+                        }}
                     />
-                    {/* BUTTONS at bottom of input box with conditional rendering */}
-                    <View style={styles.buttonRow}>
-                        <TouchableOpacity 
-                            style={styles.submitButton} 
-                            onPress={adding ? handleAddEntry : handleSaveEdit}
-                        >
-                            <Text style={styles.submitButtonText}>
-                                {adding ? "Submit" : "Save"}
-                            </Text>
-                        </TouchableOpacity>
-                        {editingIndex !== null && (
-                            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
-                                <Text style={styles.cancelButtonText}>Cancel</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                    <KeyboardAvoidingView 
+                        behavior={Platform.OS === "ios" ? "padding" : "height"}
+                        style={styles.inputModalKeyboardView}
+                    >
+                        <View style={styles.inputModalContainer}>
+                            <View style={styles.labelRow}>
+                                <Text style={styles.inputLabel}>
+                                    {adding ? "Today's Entry" : `Edit ${entries[editingIndex!]?.date || 'Entry'}`}
+                                </Text>
+                                <Text style={styles.charCount}>{input.length}/{CHARACTER_LIMIT}</Text>
+                            </View>
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder="Write your entry here..."
+                                maxLength={CHARACTER_LIMIT}
+                                value={input}
+                                multiline
+                                onChangeText={text => setInput(text)}
+                                autoFocus
+                            />
+                            {/* BUTTONS at bottom of input box with conditional rendering */}
+                            <View style={styles.buttonRow}>
+                                <TouchableOpacity 
+                                    style={styles.submitButton} 
+                                    onPress={adding ? handleAddEntry : handleSaveEdit}
+                                >
+                                    <Text style={styles.submitButtonText}>
+                                        {adding ? "Submit" : "Save"}
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={styles.cancelButton} 
+                                    onPress={() => {
+                                        if (adding) {
+                                            setAdding(false);
+                                            setInput('');
+                                        } else {
+                                            handleCancelEdit();
+                                        }
+                                    }}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
                 </View>
-            )}
+            </Modal>
                {/* Month Selection Modal */}
             <Modal
                 visible={showMonthDropdown}
@@ -449,6 +494,36 @@ const styles = StyleSheet.create({
   selectedMonthOptionText: {
     color: '#4a7c59',
     fontWeight: '600',
+  },
+  inputModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  inputModalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  inputModalKeyboardView: {
+    justifyContent: 'flex-end',
+  },
+  inputModalContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });
 
